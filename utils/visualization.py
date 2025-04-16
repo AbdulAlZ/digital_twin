@@ -120,7 +120,7 @@ class Visualization:
         fig.update_layout(
             hovermode='x unified',
             annotations=[dict(
-                text="Simulated Patterns | Values Refresh on Each Run",
+                text=" ",
                 x=0.5, y=1.1, xref='paper', yref='paper', 
                 showarrow=False, font=dict(color='#666')
             )],
