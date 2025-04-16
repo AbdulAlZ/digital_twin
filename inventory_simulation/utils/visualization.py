@@ -6,7 +6,7 @@ import numpy as np
 import streamlit as st
 from sklearn.ensemble import RandomForestClassifier
 import random
-
+import time
 
 class Visualization:
 
@@ -36,9 +36,13 @@ class Visualization:
 
         # **Ensure service level fluctuates realistically**
         service_level = (
-            min(1.0, max(0.5, last_row['total_immediate_fulfilled'] / total_orders))
-            if total_orders > 0 else 0.0
-        )
+        np.clip(  # Ensures value stays between 0.5-1.0
+            0.26 +  # Base value
+            (0.25 * random.uniform(-1, 1)) +  # Short-term fluctuations
+            (0.1 * np.sin(time.time()/1000)),  # Long-term trend wave
+            0.5, 1.0
+           )
+            ).round(2)
 
         # **Dynamically change values within realistic ranges**
         inventory_turns = round(max(1.0, random.uniform(2.5, 8.0)), 1)  # Between 2.5 to 8.0 turns
@@ -60,17 +64,69 @@ class Visualization:
 
 
     @staticmethod
-    def plot_inventory_dynamics(data):
-        """Inventory vs Demand vs Safety Stock"""
-        fig = px.line(data, x='time', 
+    def plot_inventory_dynamics(dummy_mode=True, simulation_run=0):
+        """
+        Generates fresh random patterns for all 3 metrics on every run
+        simulation_run: Change this number to get different random patterns
+        """
+        # Generate time axis
+        time_points = np.linspace(0, 120, 50)  # 50 time points from 0-120
+        
+        # Random seed based on simulation run (change run number for new patterns)
+        np.random.seed(simulation_run if simulation_run != 0 else int(time.time()))
+        
+        # Generate synthetic dummy data with coordinated randomness
+        base_trend = np.sin(time_points * 0.1)  # Underlying wave pattern
+        
+        data = pd.DataFrame({
+            'time': time_points,
+            'inventory': (
+                1000 + 
+                500 * np.sin(time_points * 0.3 + np.random.rand()) +
+                200 * np.random.randn(len(time_points))
+            ),
+            'demand': (
+                800 + 
+                400 * np.cos(time_points * 0.2 + np.random.rand()) +
+                150 * np.random.randn(len(time_points))
+            ),
+            'safety_stock': (
+                600 + 
+                300 * base_trend +
+                100 * np.random.randn(len(time_points))
+            )
+        })
+        
+        # Smooth the curves
+        window_size = 5
+        for col in ['inventory', 'demand', 'safety_stock']:
+            data[col] = data[col].rolling(window_size, min_periods=1, center=True).mean()
+        
+        # Create visualization
+        fig = px.line(data, 
+                    x='time', 
                     y=['inventory', 'demand', 'safety_stock'],
                     labels={'value': 'Units', 'variable': 'Metric'},
-                    title="Inventory Dynamics",
+                    title="Dynamic Inventory Simulation",
                     color_discrete_map={
                         'inventory': '#1f77b4',
                         'demand': '#ff7f0e',
                         'safety_stock': '#2ca02c'
-                    })
+                    },
+                    line_dash_sequence=['solid', 'dash', 'dot'],
+                    markers=True)
+        
+        # Visual enhancements
+        fig.update_layout(
+            hovermode='x unified',
+            annotations=[dict(
+                text="Simulated Patterns | Values Refresh on Each Run",
+                x=0.5, y=1.1, xref='paper', yref='paper', 
+                showarrow=False, font=dict(color='#666')
+            )],
+            yaxis_range=[0, 2000]
+        )
+        
         return fig
 
     @staticmethod
@@ -207,18 +263,88 @@ class Visualization:
 
 class AdvancedVisualizations:
     @staticmethod
-    def plot_bullwhip_effect(data):
-        """Visualize demand amplification through supply chain"""
+    def plot_bullwhip_effect(data=None, dummy_mode=False, simulation_run=0):
+        """
+        Simulates bullwhip effect with fresh random amplification patterns
+        data: Optional real data (ignored in dummy mode)
+        dummy_mode: Generates self-contained demo data
+        simulation_run: Change for different patterns (0=random)
+        """
+        if dummy_mode or data is None:
+            # Generate bullwhip-specific synthetic data
+            np.random.seed(simulation_run if simulation_run != 0 else int(time.time()))
+            
+            time_points = np.linspace(0, 24, 100)  # 24-period timeline
+            base_demand = 50 + 20 * np.sin(time_points * 0.5)  # Base consumer demand
+            
+            # Simulate supply chain amplification
+            synthetic = pd.DataFrame({
+                'time': time_points,
+                'demand': base_demand + 5 * np.random.randn(len(time_points)),
+                'warehouse_inventory': (
+                    1.8 * base_demand + 
+                    10 * np.random.randn(len(time_points)) +
+                    5 * np.sin(time_points * 0.7)
+                ),
+                'supplier_production': (
+                    2.5 * base_demand + 
+                    20 * np.random.randn(len(time_points)) +
+                    10 * np.sin(time_points * 0.3)
+                )
+            })
+            
+            # Add realistic lag and smoothing
+            synthetic['warehouse_inventory'] = synthetic['warehouse_inventory'].shift(2).rolling(3).mean()
+            synthetic['supplier_production'] = synthetic['supplier_production'].shift(4).rolling(5).mean()
+            data = synthetic.dropna()
+
         fig = px.line(data, x='time', 
-                     y=['supplier_production', 'warehouse_inventory', 'demand'],
-                     title="🔄 Bullwhip Effect Analysis",
-                     labels={'value': 'Units', 'variable': 'Metric'},
-                     color_discrete_map={
-                         'supplier_production': '#FFA15A',
-                         'warehouse_inventory': '#00CC96',
-                         'demand': '#636EFA'
-                     })
-        fig.update_layout(hovermode="x unified")
+                    y=['supplier_production', 'warehouse_inventory', 'demand'],
+                    title="🔄 Bullwhip Effect Simulation" + (" (Live Demo)" if dummy_mode else ""),
+                    labels={'value': 'Units', 'variable': 'Stage'},
+                    color_discrete_map={
+                        'supplier_production': '#FFA15A',  # Orange
+                        'warehouse_inventory': '#00CC96',  # Green
+                        'demand': '#636EFA'               # Blue
+                    },
+                    line_dash_sequence=['dot', 'dash', 'solid'],
+                    template='plotly_white')
+
+        # Bullwhip-specific formatting
+        fig.update_layout(
+            hovermode="x unified",
+            yaxis_range=[0, data[['supplier_production', 'warehouse_inventory', 'demand']].max().max() * 1.2],
+            annotations=[dict(
+                text="Simulated Amplification Pattern" if dummy_mode else "",
+                x=0.5, y=1.15, xref="paper", yref="paper",
+                showarrow=False, font=dict(color='#666'))
+            ],
+            legend=dict(
+                title="Supply Chain Stage",
+                orientation="h",
+                yanchor="bottom",
+                y=1.02
+            )
+        )
+        
+        # Add phase arrows
+        if dummy_mode:
+            fig.add_annotation(
+                x=8, y=data['demand'].max()*1.1,
+                text="Demand →",
+                showarrow=False,
+                font=dict(color='#636EFA'))
+            fig.add_annotation(
+                x=12, y=data['warehouse_inventory'].max()*1.1,
+                text="← Warehouse",
+                showarrow=False,
+                font=dict(color='#00CC96'))
+            fig.add_annotation(
+                x=16, y=data['supplier_production'].max()*1.1,
+                text="Supplier →",
+                showarrow=False,
+                font=dict(color='#FFA15A'))
+
         return fig
 
     
