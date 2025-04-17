@@ -35,14 +35,16 @@ class Visualization:
         )
 
         # **Ensure service level fluctuates realistically**
-        service_level = (
-        np.clip(  # Ensures value stays between 0.5-1.0
-            0.26 +  # Base value
-            (0.25 * random.uniform(-1, 1)) +  # Short-term fluctuations
-            (0.1 * np.sin(time.time()/1000)),  # Long-term trend wave
+        if 'service_level' not in st.session_state:
+            st.session_state.service_level = 0.75  # Base value
+        
+        # Generate fresh random fluctuation (not cached)
+        st.session_state.service_level = np.clip(
+            st.session_state.service_level + 
+            random.uniform(-0.15, 0.15) + 
+            0.05 * np.sin(time.time()/500),  # Slower wave
             0.5, 1.0
-           )
-            ).round(2)
+        ).round(3)  # More decimal precision
 
         # **Dynamically change values within realistic ranges**
         inventory_turns = round(max(1.0, random.uniform(2.5, 8.0)), 1)  # Between 2.5 to 8.0 turns
@@ -50,7 +52,7 @@ class Visualization:
         backorder_recovery = max(10, random.randint(30, 200))  # Between 30 to 200 units
 
         metrics = [
-            ("📦 Service Level", f"{service_level*100:.1f}%"),
+            ("📦 Service Level", f"{st.session_state.service_level*100:.1f}%"),
             ("🔄 Inventory Turns", f"{inventory_turns:.1f}"),  # **Randomized realistic data**
             ("💰 Total Costs", f"${last_row['cumulative_total_cost']:,.0f}"),
             ("⚡ Reliability", f"{last_row['supplier_reliability']*100:.1f}%"),
@@ -120,7 +122,7 @@ class Visualization:
         fig.update_layout(
             hovermode='x unified',
             annotations=[dict(
-                text=" ",
+                text="Simulated Patterns | Values Refresh on Each Run",
                 x=0.5, y=1.1, xref='paper', yref='paper', 
                 showarrow=False, font=dict(color='#666')
             )],
