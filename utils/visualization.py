@@ -36,7 +36,7 @@ class Visualization:
 
         # **Ensure service level fluctuates realistically**
         if 'service_level' not in st.session_state:
-            st.session_state.service_level = 0.75  # Base value
+            st.session_state.service_level = 0.37  # Base value
         
         # Generate fresh random fluctuation (not cached)
         st.session_state.service_level = np.clip(
