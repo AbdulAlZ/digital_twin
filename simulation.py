@@ -301,7 +301,7 @@ class DigitalTwinInventory:
             'total_immediate_fulfilled': float(self.retailer.total_immediate_fulfilled),
             'total_backorder_fulfilled': float(self.retailer.total_backorder_fulfilled),
             'cumulative_total_cost': float(
-                np.sqrt(self.cumulative_costs['holding'])/50 +
+                np.sqrt(self.cumulative_costs['holding'])/10 +
                 np.sqrt(self.cumulative_costs['shortage'])/200 +
                 np.sqrt(self.cumulative_costs['ordering'])/1000
             ),
